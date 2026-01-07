@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daiso Japanese Lesson (Purple)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Nunito+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* 1. 全局設定 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f3e5f5; /* 淺紫藤色背景 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Nunito Sans', sans-serif;
+            color: #4a148c; /* 深紫色文字 */
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 2. 投影片容器 */
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            background-color: #ffffff; /* 純白背景讓紫色更突出 */
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(74, 20, 140, 0.15); /* 紫色陰影 */
+            padding: 40px 50px;
+            position: relative;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .slide-container.active {
+            display: flex;
+        }
+
+        /* 畫布層與文字層 */
+        .drawing-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            cursor: crosshair;
+        }
+
+        .text-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 11;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .text-note {
+            position: absolute;
+            font-family: 'Noto Serif JP', serif;
+            font-weight: bold;
+            font-size: 24px;
+            padding: 5px 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px dashed transparent;
+            border-radius: 4px;
+            cursor: move;
+            pointer-events: auto;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .text-note:focus, .text-note.editing {
+            border-color: #8e24aa; /* 紫色邊框 */
+            outline: none;
+            background: #fff;
+            cursor: text;
+        }
+
+        /* 3. 標題區域 */
+        header {
+            flex-shrink: 0;
+            border-bottom: 3px solid #e1bee7; /* 淺紫分隔線 */
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .slide-title {
+            color: #8e24aa; /* 紫羅蘭色標題 */
+            font-family: 'Noto Serif JP', serif;
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        /* 4. 內容區域 */
+        .content-body {
+            display: flex;
+            flex-direction: row;
+            flex-grow: 1;
+            gap: 30px;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* 左側：單字表 */
+        .vocab-section {
+            flex: 1;
+            background: #fff;
+            border-radius: 16px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border: 1px solid #f3e5f5; /* 淺紫邊框 */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            overflow-y: auto;
+        }
+
+        .vocab-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .vocab-table th {
+            text-align: left;
+            padding: 10px;
+            color: #7b1fa2; /* 深紫色 */
+            font-family: 'Noto Serif JP', serif;
+            font-size: 18px;
+            border-bottom: 2px solid #e1bee7;
+            white-space: nowrap;
+        }
+
+        .vocab-table td {
+            padding: 10px;
+            border-bottom: 1px solid #f3e5f5;
+            font-size: 18px;
+            vertical-align: middle;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .japanese-word {
+            font-weight: 700;
+            color: #4a148c; /* 最深紫色 */
+            font-family: 'Noto Serif JP', serif;
+            font-size: 22px;
+            display: block;
+        }
+
+        /* 右側：文法與例句 */
+        .grammar-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .grammar-card {
+            background-color: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            border-left: 6px solid #8e24aa; /* 紫色裝飾線 */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            flex-shrink: 0;
+        }
+
+        .grammar-tag {
+            background: #8e24aa; /* 紫色標籤 */
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .grammar-title {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 26px;
+            color: #4a148c;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .grammar-rule {
+            font-family: 'Nunito Sans', sans-serif;
+            font-size: 18px;
+            color: #7b1fa2;
+            background: #f3e5f5; /* 淺紫底色 */
+            padding: 10px;
+            border-radius: 8px;
+            line-height: 1.4;
+        }
+
+        .example-box {
+            background-color: #f8f0fc; /* 極淺紫色背景 */
+            padding: 20px;
+            border-radius: 16px;
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .example-text {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 22px;
+            line-height: 2.2;
+            color: #4a148c;
+            font-weight: 600;
+            z-index: 2;
+            width: 100%;
+            word-wrap: break-word; 
+        }
+
+        .bg-icon {
+            position: absolute;
+            bottom: -15px;
+            right: 10px;
+            font-size: 100px;
+            color: rgba(142, 36, 170, 0.1); /* 紫色透明圖標 */
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        rt {
+            font-size: 0.6em;
+            color: #8e24aa;
+            font-family: sans-serif;
+        }
+
+        /* 5. 特殊頁面 */
+        .cover-layout {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 60px;
+        }
+
+        .cover-text h1 {
+            font-size: 64px;
+            color: #4a148c;
+            margin-bottom: 20px;
+            line-height: 1.2;
+            font-family: 'Noto Serif JP', serif;
+        }
+
+        .cover-icon {
+            font-size: 160px;
+            color: #8e24aa; /* 紫色圖標 */
+            background: white;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 15px 40px rgba(74, 20, 140, 0.1);
+        }
+
+        .practice-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100%;
+            justify-content: center;
+            padding: 0 20px;
+            overflow-y: auto;
+        }
+
+        .practice-list li {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            border-left: 5px solid #8e24aa;
+            font-size: 20px;
+            font-family: 'Noto Serif JP', serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            display: flex;
+            align-items: flex-start;
+            line-height: 1.6;
+        }
+
+        .list-num {
+            color: #7b1fa2;
+            font-weight: bold;
+            margin-right: 15px;
+            font-family: sans-serif;
+            min-width: 25px;
+            font-size: 20px;
+            margin-top: 2px;
+        }
+
+        /* 6. 控制按鈕 */
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            background-color: #8e24aa;
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(74, 20, 140, 0.2);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .nav-btn:hover {
+            background-color: #7b1fa2;
+            transform: translateY(-2px);
+        }
+
+        .nav-btn:disabled {
+            background-color: #e1bee7;
+            cursor: default;
+            transform: none;
+        }
+
+        .page-number {
+            position: absolute;
+            bottom: 25px;
+            left: 50px;
+            font-size: 16px;
+            color: #9c27b0;
+            font-weight: bold;
+        }
+
+        /* ================= 工具列樣式 ================= */
+        .toolbar {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #fff;
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .tool-btn {
+            width: 45px;
+            height: 45px;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            background: #f3e5f5;
+            color: #4a148c;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .tool-btn:hover {
+            background: #e1bee7;
+        }
+
+        .tool-btn.active {
+            background: #8e24aa;
+            color: white;
+            box-shadow: 0 4px 10px rgba(142, 36, 170, 0.4);
+        }
+
+        /* Tooltip */
+        .tool-btn::after {
+            content: attr(data-title);
+            position: absolute;
+            left: 110%;
+            background: #4a148c;
+            color: #fff;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .tool-btn:hover::after {
+            opacity: 1;
+        }
+
+        /* 顏色選擇器 */
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        .color-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .color-btn.active {
+            border-color: #4a148c;
+            transform: scale(1.1);
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            width: 100%;
+        }
+
+        /* ================= 列印 (PDF) 專用樣式 ================= */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 0;
+            }
+            body {
+                background-color: white;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                display: block;
+                overflow: visible;
+                height: auto;
+            }
+            /* 強制顯示所有投影片 */
+            .slide-container {
+                display: flex !important;
+                opacity: 1 !important;
+                page-break-after: always;
+                break-after: page;
+                box-shadow: none;
+                margin: 0;
+                border: none;
+                width: 100%;
+                height: 100vh; /* 填滿頁面 */
+                transform: scale(0.9); /* 縮放以適應頁面邊距 */
+                transform-origin: center top;
+            }
+            /* 隱藏介面元素 */
+            .toolbar, .controls {
+                display: none !important;
+            }
+            .page-number {
+                display: block !important;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- 工具列 -->
+<div class="toolbar">
+    <button class="tool-btn active" data-tool="pointer" onclick="setTool('pointer')" data-title="游標 (操作)"><i class="fa-solid fa-arrow-pointer"></i></button>
+    <button class="tool-btn" data-tool="pen" onclick="setTool('pen')" data-title="畫筆 (繪圖)"><i class="fa-solid fa-pencil"></i></button>
+    <button class="tool-btn" data-tool="eraser" onclick="setTool('eraser')" data-title="橡皮擦"><i class="fa-solid fa-eraser"></i></button>
+    <button class="tool-btn" data-tool="text" onclick="setTool('text')" data-title="文字 (打字)"><i class="fa-solid fa-font"></i></button>
+    <button class="tool-btn" data-tool="move" onclick="setTool('move')" data-title="移動 (圈選文字)"><i class="fa-solid fa-up-down-left-right"></i></button>
+    
+    <div class="divider"></div>
+    
+    <button class="tool-btn" onclick="clearSlide()" data-title="清除本頁"><i class="fa-solid fa-trash-can"></i></button>
+    <button class="tool-btn" onclick="savePDF()" data-title="另存為 PDF"><i class="fa-solid fa-file-pdf"></i></button>
+
+    <div class="color-palette" id="colorPalette">
+        <!-- JS 會自動生成 10 色按鈕 -->
+    </div>
+</div>
+
+<!-- Slide 1: 封面 -->
+<div class="slide-container active" id="slide1">
+    <div class="cover-layout">
+        <div class="cover-text">
+            <h1>ダイソー人気商品<br>語彙と文法</h1>
+            <div style="height: 5px; width: 80px; background: #8e24aa; margin: 25px 0;"></div>
+            <p style="font-size: 28px; color: #4a148c; line-height: 1.6;">
+                PART 1: 収納とキッチン<br>
+                PART 2: 生活と趣味
+            </p>
+        </div>
+        <div class="cover-icon">
+            <i class="fa-solid fa-store"></i>
+        </div>
+    </div>
+    <div class="page-number">1 / 13</div>
+</div>
+
+<!-- Slide 2: 収納グッズ -->
+<div class="slide-container" id="slide2">
+    <header>
+        <h2 class="slide-title">収納グッズ (整理整頓)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">圧縮バッグ</td><td>あっしゅくばっぐ</td><td>壓縮袋</td></tr>
+                <tr><td class="japanese-word">収納ケース</td><td>しゅうのうけーす</td><td>收納盒</td></tr>
+                <tr><td class="japanese-word">吊り下げ</td><td>つりさげ</td><td>吊掛式</td></tr>
+                <tr><td class="japanese-word">隙間</td><td>すきま</td><td>縫隙/空隙</td></tr>
+                <tr><td class="japanese-word">仕切り</td><td>しきり</td><td>隔板</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～ように</h3>
+                <div class="grammar-rule">接續：動詞辭書形/ない形＋ように<br>意味：為了.../以便...</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-boxes-packing bg-icon"></i>
+                <p class="example-text"><ruby>服<rt>ふく</rt></ruby>を<ruby>小<rt>ちい</rt></ruby>さくするように、<ruby>圧縮<rt>あっしゅく</rt></ruby>バッグを<ruby>使<rt>つか</rt></ruby>います。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">2 / 13</div>
+</div>
+
+<!-- Slide 3: 調理器具 -->
+<div class="slide-container" id="slide3">
+    <header>
+        <h2 class="slide-title">調理器具 (便利なキッチン用品)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">電子レンジ</td><td>でんしれんじ</td><td>微波爐</td></tr>
+                <tr><td class="japanese-word">時短</td><td>じたん</td><td>縮短時間</td></tr>
+                <tr><td class="japanese-word">皮むき</td><td>かわむき</td><td>削皮</td></tr>
+                <tr><td class="japanese-word">冷凍</td><td>れいとう</td><td>冷凍</td></tr>
+                <tr><td class="japanese-word">解凍</td><td>かいとう</td><td>解凍</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～やすい</h3>
+                <div class="grammar-rule">接續：動詞ます形（去掉ます）＋やすい<br>意味：容易... / 好做...</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-kitchen-set bg-icon"></i>
+                <p class="example-text">このカッターはリンゴが<ruby>切<rt>き</rt></ruby>りやすいです。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">3 / 13</div>
+</div>
+
+<!-- Slide 4: 掃除用品 -->
+<div class="slide-container" id="slide4">
+    <header>
+        <h2 class="slide-title">掃除用品 (きれいにしよう)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">洗剤</td><td>せんざい</td><td>清潔劑</td></tr>
+                <tr><td class="japanese-word">カビ</td><td>かび</td><td>黴菌</td></tr>
+                <tr><td class="japanese-word">汚れ</td><td>よごれ</td><td>汙垢</td></tr>
+                <tr><td class="japanese-word">掃除</td><td>そうじ</td><td>打掃</td></tr>
+                <tr><td class="japanese-word">捨てる</td><td>すてる</td><td>丟棄</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～てしまう</h3>
+                <div class="grammar-rule">接續：動詞て形＋しまう<br>意味：...完了 / (遺憾)不小心...</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-broom bg-icon"></i>
+                <p class="example-text">ジュースをこぼしてしまいました。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">4 / 13</div>
+</div>
+
+<!-- Slide 5: 旅行・お出かけ -->
+<div class="slide-container" id="slide5">
+    <header>
+        <h2 class="slide-title">旅行・お出かけ (トラベルグッズ)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">旅行</td><td>りょこう</td><td>旅行</td></tr>
+                <tr><td class="japanese-word">荷物</td><td>にもつ</td><td>行李</td></tr>
+                <tr><td class="japanese-word">詰め替え</td><td>つめかえ</td><td>補充/分裝</td></tr>
+                <tr><td class="japanese-word">持ち運び</td><td>もちはこび</td><td>攜帶</td></tr>
+                <tr><td class="japanese-word">便利</td><td>べんり</td><td>方便</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～ておく</h3>
+                <div class="grammar-rule">接續：動詞て形＋おく<br>意味：預先做.../保持...</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-plane bg-icon"></i>
+                <p class="example-text"><ruby>旅行<rt>りょこう</rt></ruby>の<ruby>前<rt>まえ</rt></ruby>に、<ruby>荷物<rt>にもつ</rt></ruby>を<ruby>準備<rt>じゅんび</rt></ruby>しておきます。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">5 / 13</div>
+</div>
+
+<!-- Slide 6: 趣味・推し活 -->
+<div class="slide-container" id="slide6">
+    <header>
+        <h2 class="slide-title">趣味・推し活 (ホビー)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">推し</td><td>おし</td><td>推(喜歡的偶像/角色)</td></tr>
+                <tr><td class="japanese-word">応援</td><td>おうえん</td><td>應援/支持</td></tr>
+                <tr><td class="japanese-word">飾る</td><td>かざる</td><td>裝飾</td></tr>
+                <tr><td class="japanese-word">撮影</td><td>さつえい</td><td>攝影</td></tr>
+                <tr><td class="japanese-word">集める</td><td>あつめる</td><td>收集</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～たり～たり</h3>
+                <div class="grammar-rule">接續：動詞た形＋り<br>意味：做...啦做...啦 (列舉)</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-heart bg-icon"></i>
+                <p class="example-text"><ruby>写真<rt>しゃしん</rt></ruby>を<ruby>撮<rt>と</rt></ruby>ったり、グッズを<ruby>集<rt>あつ</rt></ruby>めたりします。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">6 / 13</div>
+</div>
+
+<!-- Slide 7: 防災グッズ -->
+<div class="slide-container" id="slide7">
+    <header>
+        <h2 class="slide-title">防災グッズ (もしもの備え)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">防災</td><td>ぼうさい</td><td>防災</td></tr>
+                <tr><td class="japanese-word">地震</td><td>じしん</td><td>地震</td></tr>
+                <tr><td class="japanese-word">備え</td><td>そなえ</td><td>防備/準備</td></tr>
+                <tr><td class="japanese-word">非常食</td><td>ひじょうしょく</td><td>非常食/儲備糧</td></tr>
+                <tr><td class="japanese-word">安全</td><td>あんぜん</td><td>安全</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～たら (条件)</h3>
+                <div class="grammar-rule">接續：動詞た形＋ら<br>意味：如果...的話</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-shield-halved bg-icon"></i>
+                <p class="example-text"><ruby>地震<rt>じしん</rt></ruby>が<ruby>来<rt>き</rt></ruby>たら、<ruby>机<rt>つくえ</rt></ruby>の<ruby>下<rt>した</rt></ruby>に<ruby>入<rt>はい</rt></ruby>ります。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">7 / 13</div>
+</div>
+
+<!-- Slide 8: Part 2 Cover -->
+<div class="slide-container" id="slide8">
+    <div class="cover-layout">
+        <div class="cover-text">
+            <h1>PART 2</h1>
+            <div style="height: 5px; width: 80px; background: #8e24aa; margin: 25px 0;"></div>
+            <h1 style="color: #8e24aa; font-size: 56px;">生活と趣味</h1>
+            <p style="font-size: 28px; color: #4a148c; margin-top: 20px;">N4 総合練習</p>
+        </div>
+        <div class="cover-icon">
+            <i class="fa-solid fa-book-open"></i>
+        </div>
+    </div>
+    <div class="page-number">8 / 13</div>
+</div>
+
+<!-- Slide 9: 文房具 -->
+<div class="slide-container" id="slide9">
+    <header>
+        <h2 class="slide-title">文房具 (オフィス用品)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">文房具</td><td>ぶんぼうぐ</td><td>文具</td></tr>
+                <tr><td class="japanese-word">ノート</td><td>のーと</td><td>筆記本</td></tr>
+                <tr><td class="japanese-word">ペン</td><td>ぺん</td><td>筆</td></tr>
+                <tr><td class="japanese-word">ファイル</td><td>ふぁいる</td><td>文件夾</td></tr>
+                <tr><td class="japanese-word">整理</td><td>せいり</td><td>整理</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～のに</h3>
+                <div class="grammar-rule">接續：動詞辭書形＋のに<br>意味：用於.../為了... (用途)</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-pen-ruler bg-icon"></i>
+                <p class="example-text">このファイルは<ruby>書類<rt>しょるい</rt></ruby>を<ruby>整理<rt>せいり</rt></ruby>するのに<ruby>便利<rt>べんり</rt></ruby>です。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">9 / 13</div>
+</div>
+
+<!-- Slide 10: 日用品雑貨 -->
+<div class="slide-container" id="slide10">
+    <header>
+        <h2 class="slide-title">日用品雑貨 (毎日の生活)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">傘</td><td>かさ</td><td>傘</td></tr>
+                <tr><td class="japanese-word">手袋</td><td>てぶくろ</td><td>手套</td></tr>
+                <tr><td class="japanese-word">鏡</td><td>かがみ</td><td>鏡子</td></tr>
+                <tr><td class="japanese-word">時計</td><td>とけい</td><td>時鐘/手錶</td></tr>
+                <tr><td class="japanese-word">電池</td><td>でんち</td><td>電池</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～そうです (様態)</h3>
+                <div class="grammar-rule">接續：去い/去な＋そうです<br>意味：看起來好像...</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-umbrella bg-icon"></i>
+                <p class="example-text">この<ruby>傘<rt>かさ</rt></ruby>はとても<ruby>丈夫<rt>じょうぶ</rt></ruby>そうです。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">10 / 13</div>
+</div>
+
+<!-- Slide 11: 食品 -->
+<div class="slide-container" id="slide11">
+    <header>
+        <h2 class="slide-title">食品 (お菓子と飲み物)</h2>
+    </header>
+    <div class="content-body">
+        <div class="vocab-section">
+            <table class="vocab-table">
+                <tr><th>單字</th><th>讀音</th><th>中文意思</th></tr>
+                <tr><td class="japanese-word">お菓子</td><td>おかし</td><td>點心/零食</td></tr>
+                <tr><td class="japanese-word">ラーメン</td><td>らーめん</td><td>拉麵</td></tr>
+                <tr><td class="japanese-word">味</td><td>あじ</td><td>味道</td></tr>
+                <tr><td class="japanese-word">辛い</td><td>からい</td><td>辣的</td></tr>
+                <tr><td class="japanese-word">甘い</td><td>あまい</td><td>甜的</td></tr>
+            </table>
+        </div>
+        <div class="grammar-section">
+            <div class="grammar-card">
+                <span class="grammar-tag">文法</span>
+                <h3 class="grammar-title">～てみる</h3>
+                <div class="grammar-rule">接續：動詞て形＋みる<br>意味：試著做...</div>
+            </div>
+            <div class="example-box">
+                <i class="fa-solid fa-utensils bg-icon"></i>
+                <p class="example-text"><ruby>韓国<rt>かんこく</rt></ruby>の<ruby>辛<rt>から</rt></ruby>いラーメンを<ruby>食<rt>た</rt></ruby>べてみます。</p>
+            </div>
+        </div>
+    </div>
+    <div class="page-number">11 / 13</div>
+</div>
+
+<!-- Slide 12: N4 Practice (Japanese) -->
+<div class="slide-container" id="slide12">
+    <header>
+        <h2 class="slide-title">N4 レベル練習問題 (日文)</h2>
+    </header>
+    <ul class="practice-list">
+        <li><span class="list-num">1.</span> <div><ruby>旅行<rt>りょこう</rt></ruby>に<ruby>行<rt>い</rt></ruby>くので、<ruby>荷物<rt>にもつ</rt></ruby>をまとめておきました。</div></li>
+        <li><span class="list-num">2.</span> <div>このペンはとても<ruby>書<rt>か</rt></ruby>きやすいです。</div></li>
+        <li><span class="list-num">3.</span> <div><ruby>電子<rt>でんし</rt></ruby>レンジで<ruby>野菜<rt>やさい</rt></ruby>を<ruby>温<rt>あたた</rt></ruby>めます。</div></li>
+        <li><span class="list-num">4.</span> <div><ruby>推<rt>お</rt></ruby>しのグッズを<ruby>集<rt>あつ</rt></ruby>めるのが<ruby>好<rt>す</rt></ruby>きです。</div></li>
+        <li><span class="list-num">5.</span> <div><ruby>災害<rt>さいがい</rt></ruby>のために、<ruby>水<rt>みず</rt></ruby>を<ruby>買<rt>か</rt></ruby>っておきます。</div></li>
+        <li><span class="list-num">6.</span> <div>この<ruby>袋<rt>ふくろ</rt></ruby>はゴミを<ruby>捨<rt>す</rt></ruby>てるのに<ruby>便利<rt>べんり</rt></ruby>です。</div></li>
+        <li><span class="list-num">7.</span> <div><ruby>部屋<rt>へや</rt></ruby>を<ruby>片付<rt>かたづ</rt></ruby>けるように、<ruby>箱<rt>はこ</rt></ruby>を<ruby>買<rt>か</rt></ruby>いました。</div></li>
+        <li><span class="list-num">8.</span> <div><ruby>新<rt>あたら</rt></ruby>しいお<ruby>菓子<rt>かし</rt></ruby>を<ruby>食<rt>た</rt></ruby>べてみませんか。</div></li>
+    </ul>
+    <div class="page-number">12 / 13</div>
+</div>
+
+<!-- Slide 13: N4 Practice (Chinese) -->
+<div class="slide-container" id="slide13">
+    <header>
+        <h2 class="slide-title">N4 レベル練習問題 (中文解答)</h2>
+    </header>
+    <ul class="practice-list">
+        <li><span class="list-num">1.</span> 因為要去旅行，所以預先整理好了行李。</li>
+        <li><span class="list-num">2.</span> 這支筆非常好寫。</li>
+        <li><span class="list-num">3.</span> 用微波爐加熱蔬菜。</li>
+        <li><span class="list-num">4.</span> 我喜歡收集偶像(推)的周邊商品。</li>
+        <li><span class="list-num">5.</span> 為了災害(發生時)，預先買好了水。</li>
+        <li><span class="list-num">6.</span> 這個袋子用來丟垃圾很方便。</li>
+        <li><span class="list-num">7.</span> 為了整理房間，買了箱子。</li>
+        <li><span class="list-num">8.</span> 要不要試吃看看新的點心呢？</li>
+    </ul>
+    <div class="page-number">13 / 13</div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+    <button class="nav-btn" id="prevBtn" onclick="prevSlide()"><i class="fa-solid fa-chevron-left"></i></button>
+    <button class="nav-btn" id="nextBtn" onclick="nextSlide()"><i class="fa-solid fa-chevron-right"></i></button>
+</div>
+
+<script>
+    // --- 簡報核心邏輯 ---
+    let currentSlide = 1;
+    const totalSlides = 13;
+
+    // --- 互動功能變數 ---
+    let currentTool = 'pointer';
+    let currentColor = '#000000';
+    let isDrawing = false;
+    let activeCanvas = null;
+    let activeCtx = null;
+    let lastX = 0;
+    let lastY = 0;
+    let isDraggingText = false;
+    let draggedText = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    // 顏色定義 (10色)
+    const colors = [
+        '#000000', '#FF0000', '#0000FF', '#008000', '#FFA500', 
+        '#800080', '#FFC0CB', '#A52A2A', '#808080', '#00FFFF'
+    ];
+
+    // 初始化
+    window.onload = function() {
+        initColors();
+        initLayers();
+        showSlide(1);
+    };
+
+    function initColors() {
+        const palette = document.getElementById('colorPalette');
+        colors.forEach(color => {
+            const btn = document.createElement('div');
+            btn.className = 'color-btn';
+            btn.style.backgroundColor = color;
+            if(color === currentColor) btn.classList.add('active');
+            btn.onclick = () => {
+                currentColor = color;
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            };
+            palette.appendChild(btn);
+        });
+    }
+
+    function initLayers() {
+        document.querySelectorAll('.slide-container').forEach((slide, index) => {
+            // 加入畫布層
+            const canvas = document.createElement('canvas');
+            canvas.className = 'drawing-layer';
+            canvas.width = 1280;
+            canvas.height = 720;
+            slide.appendChild(canvas);
+
+            // 加入文字層
+            const textLayer = document.createElement('div');
+            textLayer.className = 'text-layer';
+            textLayer.id = `textLayer-${index + 1}`;
+            slide.appendChild(textLayer);
+
+            // 畫布事件綁定
+            const ctx = canvas.getContext('2d');
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            // 文字層點擊事件 (新增文字)
+            textLayer.addEventListener('click', (e) => {
+                if(currentTool === 'text' && e.target === textLayer) {
+                    createTextNote(e.offsetX, e.offsetY, textLayer);
+                }
+            });
+        });
+    }
+
+    function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.dataset.tool === tool) btn.classList.add('active');
+        });
+
+        // 控制畫布是否接受滑鼠事件
+        document.querySelectorAll('.drawing-layer').forEach(canvas => {
+            if (tool === 'pen' || tool === 'eraser') {
+                canvas.style.pointerEvents = 'auto';
+            } else {
+                canvas.style.pointerEvents = 'none';
+            }
+        });
+
+        // 控制文字層是否接受滑鼠事件
+        document.querySelectorAll('.text-layer').forEach(layer => {
+            if (tool === 'text' || tool === 'move') {
+                layer.style.pointerEvents = 'auto';
+            } else {
+                layer.style.pointerEvents = 'none';
+            }
+        });
+    }
+
+    // --- 繪圖邏輯 ---
+    function startDrawing(e) {
+        if (currentTool !== 'pen' && currentTool !== 'eraser') return;
+        isDrawing = true;
+        activeCanvas = e.target;
+        activeCtx = activeCanvas.getContext('2d');
+        [lastX, lastY] = [e.offsetX, e.offsetY];
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        
+        activeCtx.beginPath();
+        activeCtx.moveTo(lastX, lastY);
+        activeCtx.lineTo(e.offsetX, e.offsetY);
+        
+        if (currentTool === 'pen') {
+            activeCtx.globalCompositeOperation = 'source-over';
+            activeCtx.strokeStyle = currentColor;
+            activeCtx.lineWidth = 3;
+        } else if (currentTool === 'eraser') {
+            activeCtx.globalCompositeOperation = 'destination-out';
+            activeCtx.lineWidth = 20;
+        }
+        
+        activeCtx.lineCap = 'round';
+        activeCtx.stroke();
+        [lastX, lastY] = [e.offsetX, e.offsetY];
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+    }
+
+    // --- 文字邏輯 ---
+    function createTextNote(x, y, container, content = '', color = null) {
+        const note = document.createElement('div');
+        note.className = 'text-note';
+        note.contentEditable = true;
+        note.style.left = x + 'px';
+        note.style.top = y + 'px';
+        note.style.color = color || currentColor;
+        note.innerText = content;
+
+        // 拖曳事件
+        note.addEventListener('mousedown', (e) => {
+            if (currentTool === 'move') {
+                isDraggingText = true;
+                draggedText = note;
+                dragOffsetX = e.clientX - note.getBoundingClientRect().left;
+                dragOffsetY = e.clientY - note.getBoundingClientRect().top;
+                e.stopPropagation(); // 防止觸發編輯
+                note.contentEditable = false; // 拖曳時暫時不可編輯
+            } else if (currentTool === 'text') {
+                 note.contentEditable = true;
+            }
+        });
+
+        // 自動聚焦
+        if (!content) {
+            setTimeout(() => note.focus(), 0);
+        }
+
+        // 失去焦點時如果是空的就刪除
+        note.addEventListener('blur', () => {
+            if (!note.innerText.trim()) {
+                note.remove();
+            }
+            note.contentEditable = true; // 恢復可編輯
+        });
+
+        container.appendChild(note);
+    }
+
+    // 全局拖曳監聽
+    document.addEventListener('mousemove', (e) => {
+        if (isDraggingText && draggedText && currentTool === 'move') {
+            const container = draggedText.parentElement;
+            const containerRect = container.getBoundingClientRect();
+            let newX = e.clientX - containerRect.left - dragOffsetX;
+            let newY = e.clientY - containerRect.top - dragOffsetY;
+            
+            draggedText.style.left = newX + 'px';
+            draggedText.style.top = newY + 'px';
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDraggingText = false;
+        if(draggedText) draggedText.contentEditable = true;
+        draggedText = null;
+    });
+
+    // --- 清除與儲存 ---
+    function clearSlide() {
+        const currentContainer = document.getElementById('slide' + currentSlide);
+        const canvas = currentContainer.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const textLayer = currentContainer.querySelector('.text-layer');
+        textLayer.innerHTML = '';
+    }
+
+    function savePDF() {
+        // 提示用戶
+        alert("請在列印視窗中選擇「另存為 PDF」\n(Please select 'Save as PDF' in the print dialog)");
+        window.print();
+    }
+
+    // --- 幻燈片控制 ---
+    function showSlide(slideIndex) {
+        document.querySelectorAll('.slide-container').forEach(slide => {
+            slide.classList.remove('active');
+        });
+
+        const currentElement = document.getElementById('slide' + slideIndex);
+        if (currentElement) {
+            currentElement.classList.add('active');
+        }
+
+        document.getElementById('prevBtn').disabled = (slideIndex === 1);
+        document.getElementById('nextBtn').disabled = (slideIndex === totalSlides);
+        
+        currentSlide = slideIndex;
+    }
+
+    function nextSlide() {
+        if (currentSlide < totalSlides) showSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+        if (currentSlide > 1) showSlide(currentSlide - 1);
+    }
+
+    document.addEventListener('keydown', function(event) {
+        // 如果正在編輯文字，不觸發翻頁
+        if (document.activeElement.isContentEditable) return;
+
+        if (event.key === 'ArrowRight') nextSlide();
+        else if (event.key === 'ArrowLeft') prevSlide();
+    });
+</script>
+
+</body>
+</html>
